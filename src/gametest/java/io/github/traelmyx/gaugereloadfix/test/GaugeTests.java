@@ -6,6 +6,7 @@ import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlock.Pane
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntity;
 import com.simibubi.create.content.logistics.factoryBoard.FactoryPanelPosition;
 import com.simibubi.create.content.logistics.packagerLink.LogisticallyLinkedBehaviour;
+import com.simibubi.create.content.logistics.packagerLink.LogisticsManager;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import io.github.traelmyx.gaugereloadfix.GaugeReloadFix;
 import net.minecraft.core.BlockPos;
@@ -91,6 +92,10 @@ public class GaugeTests {
 		CompoundTag packagerTag = level.getBlockEntity(packagerPos).saveWithFullMetadata(registries);
 		// the request timer runs out on the third tick: after the packager has found its chest, before the cached count expires
 		gaugeTag.getCompound("bottom_left").putInt("Timer", 2);
+		// coming back after a while: the network's cached stock counts have long expired
+		UUID network = ((FactoryPanelBlockEntity) level.getBlockEntity(gaugePos)).panels.get(PanelSlot.BOTTOM_LEFT).network;
+		LogisticsManager.SUMMARIES.invalidate(network);
+		LogisticsManager.ACCURATE_SUMMARIES.invalidate(network);
 		level.removeBlockEntity(gaugePos);
 		level.removeBlockEntity(packagerPos);
 		level.setBlockEntity(BlockEntity.loadStatic(gaugePos, level.getBlockState(gaugePos), gaugeTag, registries));
