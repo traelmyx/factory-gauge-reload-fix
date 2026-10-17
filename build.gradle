@@ -13,8 +13,24 @@ repositories {
     maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven' }
 }
 
+configurations {
+    createJar { transitive = false }
+}
+
 dependencies {
     implementation "maven.modrinth:create:${create_version}"
+    createJar "maven.modrinth:create:${create_version}"
+}
+
+// Create bundles Flywheel, Ponder and Registrate inside its jar; the tests touch their types, so compile against them too
+def createNested = layout.buildDirectory.dir('create-jarjar')
+def unpackCreateDeps = tasks.register('unpackCreateDeps', Copy) {
+    from({ zipTree(configurations.createJar.singleFile) }) {
+        include 'META-INF/jarjar/*.jar'
+        eachFile { path = name }
+    }
+    includeEmptyDirs = false
+    into createNested
 }
 
 sourceSets {
@@ -103,3 +119,8 @@ tasks.withType(JavaCompile).configureEach {
 jar {
     from('LICENSE') { rename { "${it}_${mod_id}" } }
 }
+
+dependencies {
+    gametestCompileOnly fileTree(createNested) { include '*.jar' }
+}
+tasks.named('compileGametestJava') { dependsOn unpackCreateDeps }
