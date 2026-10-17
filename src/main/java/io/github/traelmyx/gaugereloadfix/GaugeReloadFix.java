@@ -1,9 +1,7 @@
 package io.github.traelmyx.gaugereloadfix;
 
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLPaths;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +22,6 @@ import java.util.Properties;
 public class GaugeReloadFix {
 	public static final String MOD_ID = "gauge_reload_fix";
 	public static final Logger LOGGER = LoggerFactory.getLogger("Factory Gauge Reload Fix");
-	/** The first Create version the fix may already be in; on it and newer the mod stands down unless told otherwise. */
-	public static final String FIXED_UPSTREAM_IN = "6.0.11";
 
 	public static boolean enabled = true;
 	/** Ticks a freshly loaded gauge waits before it may place an order. */
@@ -33,6 +29,17 @@ public class GaugeReloadFix {
 
 	public GaugeReloadFix() {
 		loadConfig(FMLPaths.CONFIGDIR.get());
+		checkTarget();
+	}
+
+	/** The mixin is optional so a Create update can't crash a pack; say so when it no longer finds its target. */
+	private static void checkTarget() {
+		try {
+			Class<?> panel = Class.forName("com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBehaviour", false, GaugeReloadFix.class.getClassLoader());
+			panel.getDeclaredMethod("tickRequests");
+		} catch (ReflectiveOperationException | LinkageError e) {
+			LOGGER.warn("This Create version has no FactoryPanelBehaviour.tickRequests; the fix is inactive ({})", e.toString());
+		}
 	}
 
 	static void loadConfig(Path configDir) {
@@ -45,26 +52,18 @@ public class GaugeReloadFix {
 				LOGGER.warn("Could not read {}, using defaults", file, e);
 			}
 		}
-		boolean configured = Boolean.parseBoolean(props.getProperty("enabled", "true"));
-		boolean keepOnNewerCreate = Boolean.parseBoolean(props.getProperty("keepOnNewerCreate", "false"));
+		enabled = Boolean.parseBoolean(props.getProperty("enabled", "true"));
 		try {
 			graceTicks = Math.max(0, Integer.parseInt(props.getProperty("graceTicks", "40").trim()));
 		} catch (NumberFormatException e) {
 			graceTicks = 40;
 		}
-		String create = ModList.get().getModContainerById("create").map(c -> c.getModInfo().getVersion().toString()).orElse("0");
-		boolean newerCreate = new DefaultArtifactVersion(create).compareTo(new DefaultArtifactVersion(FIXED_UPSTREAM_IN)) >= 0;
-		enabled = configured && (!newerCreate || keepOnNewerCreate);
-		if (configured && !enabled)
-			LOGGER.info("Create {} may already fix this; standing down (set keepOnNewerCreate=true to keep the fix)", create);
-		props.setProperty("enabled", Boolean.toString(configured));
+		props.setProperty("enabled", Boolean.toString(enabled));
 		props.setProperty("graceTicks", Integer.toString(graceTicks));
-		props.setProperty("keepOnNewerCreate", Boolean.toString(keepOnNewerCreate));
 		try {
 			Files.createDirectories(configDir);
 			try (Writer writer = Files.newBufferedWriter(file)) {
-				props.store(writer, "Factory Gauge Reload Fix. graceTicks: how long a freshly loaded factory gauge waits before it may order. "
-					+ "keepOnNewerCreate: keep the fix on Create " + FIXED_UPSTREAM_IN + " and newer.");
+				props.store(writer, "Factory Gauge Reload Fix. graceTicks: how long a freshly loaded factory gauge waits before it may order.");
 			}
 		} catch (IOException e) {
 			LOGGER.warn("Could not write {}", file, e);
