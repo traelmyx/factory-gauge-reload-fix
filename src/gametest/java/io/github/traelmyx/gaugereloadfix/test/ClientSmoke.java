@@ -98,6 +98,11 @@ public final class ClientSmoke {
 			level.setBlockAndUpdate(base, AllBlocks.PACKAGER.getDefaultState().setValue(BlockStateProperties.FACING, Direction.EAST));
 			level.setBlockAndUpdate(base.above(), AllBlocks.FACTORY_GAUGE.getDefaultState().setValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR));
 			gaugePos = base.above();
+			// a gauge block with no panel on it removes itself
+			var gauge = (com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlockEntity) level.getBlockEntity(gaugePos);
+			gauge.addPanel(com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlock.PanelSlot.BOTTOM_LEFT, java.util.UUID.randomUUID());
+			gauge.panels.get(com.simibubi.create.content.logistics.factoryBoard.FactoryPanelBlock.PanelSlot.BOTTOM_LEFT).setFilter(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE));
+			gauge.notifyUpdate();
 			player.teleportTo(level, base.getX() + 0.5, base.getY(), base.getZ() - 2.5, 0, 20);
 		});
 	}
